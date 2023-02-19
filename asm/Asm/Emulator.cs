@@ -43,7 +43,7 @@
 			});
 
 
-			State = EmulatorState.Ready;
+			//State = EmulatorState.Ready;
 
 		}
 

@@ -41,5 +41,20 @@
         public Type ValueType { get; }
 
         public int Value { get; }
+
+        public override string ToString()
+        {
+            switch (ValueType)
+            {
+                case Type.Immediate:
+                    return Value.ToString();
+                case Type.Register:
+                    return 'R' + Value.ToString();
+                case Type.RegisterOffset:
+                    return "offset R" + Value.ToString();
+            }
+
+            return "";
+        }
     }
 }

@@ -41,6 +41,8 @@
             var variant = 0u;
             var _26Bits = 0u;
 
+            var arguments = instruction.Arguments;
+
             switch (instruction.Alias)
             {
                 case "INP":
@@ -54,15 +56,14 @@
                 case "RET":
                 case "HLT":
                     break;
-
                 case "PSH":
-                    _26Bits = EncodePSH(instruction, ref variant);
+                    _26Bits = EncodePsh(instruction, ref variant);
                     break;
                 case "POP":
-                    _26Bits = (uint)(BitOperations.GetBits(instruction.Arguments[0].Value,0,2));
+                    _26Bits = BitOperations.GetRegisterValue(instruction.Arguments[0].Value);
                     break;
                 case "CMP":
-                    _26Bits = EncodeCMP(instruction, ref variant);
+                    _26Bits = EncodeCmp(instruction, ref variant);
                     break;
                 case "BRA":
                 case "JMS":
@@ -71,7 +72,7 @@
                 case "BMI":
                 case "BPL":
                 case "BLT":
-                    _26Bits = (uint)(BitOperations.GetBits(instruction.Arguments[0].Value,0,25));
+                    _26Bits = BitOperations.Get26BitImmediateValue(instruction.Arguments[0].Value);
                     break;
                 case "ADD":
                 case "SUB":
@@ -84,19 +85,59 @@
                 case "RSHIFT":
                 case "LSHIFT":
                 case "MOV":
+                    _26Bits = EncodeALU(instruction, ref variant);
                     break;
             }
 
         var binary = ((Opcodes[instruction.Alias] + variant) << 26) | _26Bits;
-        Console.WriteLine(Convert.ToString(binary,2));
+
+        Console.WriteLine(instruction.Alias + instruction.Arguments.Aggregate(" : ",(s1,s2)=>s1 + ' ' +s2));
+        Console.WriteLine(BitOperations.ToBinary(binary));
 
         return binary;
         }
 
+        private uint EncodeALU(IntermediaryInstruction instruction, ref uint variant)
+        {
+            if (instruction.Arguments[1].ValueType == Type.Register)
+            {
+                variant = 1;
+                return BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
+                       (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23);
+            }
+
+            return  BitOperations.GetRegisterValue(instruction.Arguments[1].Value) |
+                          (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 3);
+        }
+
+        private uint EncodeCmp(IntermediaryInstruction instruction, ref uint variant)
+        {
+            if (instruction.Arguments[1].ValueType == Type.Register)
+            {
+                variant = 1;
+                return (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 3) |
+                       BitOperations.GetRegisterValue(instruction.Arguments[1].Value);
+            }
+
+            return BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
+                   (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23);
+        }
+
+        private uint EncodePsh(IntermediaryInstruction instruction, ref uint variant)
+        {
+            if (instruction.Arguments[0].ValueType == Type.Register)
+            {
+                return BitOperations.GetRegisterValue(instruction.Arguments[0].Value);
+            }
+
+            variant = 1;
+            return BitOperations.Get26BitImmediateValue(instruction.Arguments[0].Value);
+        }
+
         private uint EncodeIO(IntermediaryInstruction instruction, ref uint variant)
         {
-            return (((uint)BitOperations.GetBits(instruction.Arguments[0].Value,0,2)) << 8)
-                   | ((uint)BitOperations.GetBits(instruction.Arguments[1].Value,0,7));
+            return (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 8)
+                   | BitOperations.GetBits(instruction.Arguments[1].Value,0,7);
         }
 
 
@@ -106,26 +147,25 @@
             if (instruction.Arguments[1].ValueType == Type.Register)
             {
                 variant = 1;
-                return ((uint)((BitOperations.GetBits(instruction.Arguments[0].Value,0,2)) << 3)) 
-                       | ((uint)(BitOperations.GetBits(instruction.Arguments[1].Value,0,2)));
+                return BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 3 
+                       | BitOperations.GetRegisterValue(instruction.Arguments[1].Value);
             }
-            else if (instruction.Arguments[2].ValueType == Type.RegisterOffset)
+
+            if (instruction.Arguments[2].ValueType == Type.RegisterOffset)
             {
                 variant = 2;
 
                 // offset register 
-                return BitOperations.GetBits(instruction.Arguments[2].Value, 0, 2) |
+                return BitOperations.GetRegisterValue(instruction.Arguments[2].Value) |
                        (BitOperations.GetBits(instruction.Arguments[1].Value, 0, 19) << 3) |
-                       (BitOperations.GetBits(instruction.Arguments[0].Value, 0, 2) << 23);
+                       BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23;
 
             }
             // LDR Rx,immediate
-            else
-            {
-                return (uint)BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
-                       ((uint)BitOperations.GetBits(instruction.Arguments[0].Value,0,2) << 23);
-            }
-            
+
+            return BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
+                   (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23);
+
         }
 
 

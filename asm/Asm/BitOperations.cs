@@ -5,7 +5,7 @@ namespace asm.Asm
     public static class BitOperations
     {
 
-        public static int GetBits(int number, int from, int to)
+        public static uint GetBits(int number, int from, int to)
         {
             if (from > to)
             {
@@ -20,7 +20,28 @@ namespace asm.Asm
 
             var bits = (number & mask) >> from;
 
-            return (int)bits;
+            return (uint)bits;
+        }
+
+        public static uint GetRegisterValue(int number)
+        {
+            return GetBits(number, 0, 2);
+        }
+
+        public static uint Get26BitImmediateValue(int number)
+        {
+            return GetBits(number, 0, 25);
+        }
+
+        public static string ToBinary(uint number)
+        {
+            var str = Convert.ToString(number, 2);
+            while (str.Length != sizeof(int) * 8)
+            {
+                str = '0' + str;
+            }
+
+            return str;
         }
 
         
