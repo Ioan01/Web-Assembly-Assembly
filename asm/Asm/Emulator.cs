@@ -22,11 +22,18 @@
 
 		public EmulatorState State { get; set; } = EmulatorState.Idle;
 
+        public int[] Registers { get; set; } = new int[8];
 
-		public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor)
+
+        public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor)
 		{
 			this.instructionDecoder = instructionDecoder;
+
+			this.instructionDecoder.Emulator = this;
+
 			this.instructionEncoder = instructionEncoder;
+
+
 			this.codeProcessor = codeProcessor;
 		}
 		
