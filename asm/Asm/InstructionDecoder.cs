@@ -1,4 +1,6 @@
-﻿namespace asm.Asm
+﻿using MudBlazor;
+
+namespace asm.Asm
 {
 
     public class InstructionDecoder
@@ -31,7 +33,6 @@
                 }
             }
 
-
             switch (instructionType)
             {
                 case Instructions.Output:
@@ -41,14 +42,84 @@
                         DecodeInput(instruction);
                         break;
                 case Instructions.LoadRegister:
-                    DecodeLoad();
+                    DecodeLoad(instruction,variant);
                     break;
                 case Instructions.StoreRegister:
-                    DecodeStore();
+                    DecodeStore(instruction,variant);
                     break;
+                case Instructions.Halt:
+                    DecodeHalt(instruction);
+                    break;
+                case Instructions.JumpToSubroutine:
+                    DecodeJump(instruction);
+                    break;
+                case Instructions.PushToStack:
+                    DecodePush(instruction, variant);
+                    break;
+                case Instructions.PopFromStack:
+                    DecodePop(instruction, variant);
+                    break;
+                case Instructions.ReturnFromSubroutine:
+                    DecodeReturn(instruction);
+                    break;
+                case Instructions.Compare:
+                    DecodeCompare(instruction, variant);
+                    break;
+                case Instructions.BranchAlways:
+                    DecodeBranch(instruction);
+                    break;
+
+
+
+
             }
 
             return instruction;
+        }
+
+        // operand 1 is address to load/store
+        // operand 2 is source/destionation register
+        private Func<Instruction, int, Action> _fetchStoreLoad = (instruction, variant) => () =>
+        {
+            var bits = (int)instruction.Binary;
+
+
+            switch (variant)
+            {
+                case 0:
+                    instruction.operand1 = BitOperations.GetBits(bits, 0, 22);
+                    instruction.operand2 = BitOperations.GetBits(bits, 23, 25);
+                    break;
+                case 1:
+                    instruction.operand1 = BitOperations.GetRegisterValue(bits);
+                    instruction.operand2 = BitOperations.GetBits(bits, 3, 5);
+                    break;
+                case 2:
+                    instruction.operand1 = BitOperations.GetRegisterValue(bits) + BitOperations.GetBits(bits,3,22);
+                    instruction.operand2 = BitOperations.GetBits(bits, 23, 25);
+                    break;
+            }
+        };
+
+
+        private void DecodeStore(Instruction instruction, int variant)
+        {
+            instruction.Fetch = _fetchStoreLoad(instruction, variant);
+
+            instruction.Execute = () =>
+            {
+                Emulator.Memory.Write((ushort)instruction.operand1,instruction.operand2);
+            };
+        }
+
+        private void DecodeLoad(Instruction instruction, int variant)
+        {
+            instruction.Fetch = _fetchStoreLoad(instruction,variant);
+
+            instruction.Execute = () =>
+            {
+                Emulator.Registers[instruction.operand2] = (int)Emulator.Memory.Read((ushort)instruction.operand1);
+            };
         }
 
         private readonly Func<Instruction, Action> _ioFetch = instruction => () =>

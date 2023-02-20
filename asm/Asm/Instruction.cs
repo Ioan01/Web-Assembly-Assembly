@@ -14,8 +14,11 @@
             Binary = binary;
         }
 
+        // fetch operands
         public Action Fetch { get; set; }
 
+
+        //execute action on operands
         public Action Execute { get; set; }
 
         public void Run()

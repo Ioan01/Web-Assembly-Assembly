@@ -25,7 +25,10 @@
         public int[] Registers { get; set; } = new int[8];
 
 
-        public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor)
+		
+
+
+        public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
 		{
 			this.instructionDecoder = instructionDecoder;
 
@@ -35,7 +38,11 @@
 
 
 			this.codeProcessor = codeProcessor;
-		}
+
+
+			// seed memory stuff like that
+            seedEmulator?.Invoke();
+        }
 		
 		public void LoadEmulator(string code)
 		{

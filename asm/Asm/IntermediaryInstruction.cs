@@ -3,7 +3,7 @@
     public class IntermediaryInstruction
     {
         public string Alias { get; set; }
-        public List<Argument> Arguments { get; set; } = new List<Argument>();
+        public List<Argument> Arguments { get; set; } = new();
 
         
     }

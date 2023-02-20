@@ -12,8 +12,6 @@
             var variant = 0u;
             var _26Bits = 0u;
 
-            var arguments = instruction.Arguments;
-
             switch (instruction.Alias)
             {
                 case Instructions.Input:
