@@ -1,15 +1,15 @@
-﻿namespace asm.Asm
+namespace asm.Asm
 {
-    public struct Instruction
+    public class Instruction
     {
-        public readonly uint Binary { get; }
+        public uint Binary { get; }
 
 
-        public uint operand1;
-        public uint operand2;
-        public uint operand3;
+        public int operand1;
+        public int operand2;
+        public int operand3;
 
-        public Instruction(uint instructionBinary, uint binary)
+        public Instruction(uint binary)
         {
             Binary = binary;
         }
@@ -20,6 +20,8 @@
 
         //execute action on operands
         public Action Execute { get; set; }
+
+        public string Type { get; set; }
 
         public void Run()
         {
@@ -32,6 +34,7 @@
 
         public uint GetBits(int from, int to)
         {
+            Console.WriteLine(BitOperations.ToBinary(Binary));
             return BitOperations.GetBits((int)Binary, from, to);
         }
     }

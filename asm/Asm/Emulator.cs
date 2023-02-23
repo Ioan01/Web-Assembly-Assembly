@@ -78,20 +78,39 @@
 			});
 
 
-			//State = EmulatorState.Ready;
+			State = EmulatorState.Ready;
 
 		}
 
 		public async Task Run()
-		{
-			await Task.Delay(1000);
-			
-		}
+        {
+            ProgramCounter = 0;
+            while (!Stopped)
+            {
+
+                var instruction = Memory.Read(ProgramCounter);
+                var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
+
+                decodedInstruction.Fetch?.Invoke();
+                decodedInstruction.Execute();
+
+                await Task.Delay(Delay);
+                ProgramCounter++;
+            }
+
+
+            State = EmulatorState.Idle;
+
+        }
+
+        public int Delay { get; set; } = 1000;
 
         public void Stop()
         {
-            throw new NotImplementedException();
+            Stopped = true;
         }
+
+        public bool Stopped { get; set; }
 
         public void Jump(uint address)
         {
@@ -130,8 +149,9 @@
 
         }
 
-        public void Branch(int get26BitImmediateValue)
+        public void Branch(int relativeAddress)
         {
+            ErrorHandler.VerifyAddress((uint)(ProgramCounter + relativeAddress));
         }
     }
 }

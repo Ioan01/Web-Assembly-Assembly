@@ -1,4 +1,4 @@
-﻿using MudBlazor;
+using MudBlazor;
 
 namespace asm.Asm
 {
@@ -7,12 +7,13 @@ namespace asm.Asm
 	{
         public Instruction DecodeInstruction(uint instructionBinary)
         {
-            var opcode = BitOperations.GetBits((int)instructionBinary, 31, 26);
+            var opcode = BitOperations.GetBits((int)instructionBinary, 26, 31);
 
             var instructionType = "HLT";
             var variant = 0;
 
-            var instruction = new Instruction();
+            var instruction = new Instruction(instructionBinary);
+            
 
 
             if (Instructions.OpcodesReverse.ContainsKey(opcode))
@@ -32,6 +33,9 @@ namespace asm.Asm
                     variant = 2;
                 }
             }
+
+            instruction.Type = instructionType;
+
 
             switch (instructionType)
             {
@@ -87,39 +91,40 @@ namespace asm.Asm
                     instruction.Execute = _branching(() => Emulator.Carry, instruction, Emulator);
                     break;
                 case Instructions.Add:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
                     break;
                 case Instructions.Subtract:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 - i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 - i)();
                     break;
                 case Instructions.Multiply:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
                     break;
                 case Instructions.Divide:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
                     break;
                 case Instructions.Modulo:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 % i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 % i)();
                     break;
                 case Instructions.BitwiseAnd:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 & i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 & i)();
                     break;
                 case Instructions.BitwiseOr:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 | i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 | i)();
                     break;
                 case Instructions.BitwiseExclusiveOr:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 ^ i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 ^ i)();
                     break;
                 case Instructions.RightShift:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 >> i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 >> i)();
                     break;
                 case Instructions.LeftShift:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 << i);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 << i)();
                     break;
                 case Instructions.MoveToRegister:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1);
+                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i)();
                     break;
             }
+
 
             return instruction;
         }
@@ -129,13 +134,13 @@ namespace asm.Asm
             if (variant == 0)
                 return () =>
                 {
-                    instruction.operand1 = instruction.GetBits(0, 22);
-                    instruction.operand2 = instruction.GetBits(23, 25);
+                    instruction.operand1 = (int)instruction.GetBits(0, 22);
+                    instruction.operand2 = (int)instruction.GetBits(23, 25);
                 };
             return () =>
             {
-                instruction.operand1 = (uint)emulator.Registers[instruction.GetBits(0, 2)];
-                instruction.operand2 = instruction.GetBits(3, 5);
+                instruction.operand1 = emulator.Registers[instruction.GetBits(0, 2)];
+                instruction.operand2 = (int)instruction.GetBits(3, 5);
             };
 
         };
@@ -146,7 +151,8 @@ namespace asm.Asm
                 {
                     instruction.Fetch = fetch(instruction, variant, emulator);
 
-                    instruction.Execute = ()=> emulator.Registers[instruction.operand2] =
+                    instruction.Execute = ()=> 
+                        emulator.Registers[instruction.operand2] =
                         execution((int)instruction.operand1, (int)instruction.operand2);
                 };
 
@@ -166,16 +172,16 @@ namespace asm.Asm
             {
                 instruction.Fetch = () =>
                 {
-                    instruction.operand1 = instruction.GetBits(0, 22);
-                    instruction.operand2 = instruction.GetBits(23, 25);
+                    instruction.operand1 = (int)instruction.GetBits(0, 22);
+                    instruction.operand2 = Emulator.Registers[instruction.GetBits(23, 25)];
                 };
             }
             else
             {
                 instruction.Fetch = () =>
                 {
-                    instruction.operand2 = (uint)Emulator.Registers[BitOperations.GetRegisterValue((int)instruction.Binary)];
-                    instruction.operand1 = instruction.GetBits(3, 5);
+                    instruction.operand2 = Emulator.Registers[BitOperations.GetRegisterValue((int)instruction.Binary)];
+                    instruction.operand1 = (int)instruction.GetBits(3, 5);
                 };
             }
 
@@ -204,9 +210,9 @@ namespace asm.Asm
 
         private void DecodePop(Instruction instruction)
         {
-            instruction.Fetch = () => instruction.operand1 = BitOperations.GetRegisterValue((int)instruction.Binary);
+            instruction.Fetch = () => instruction.operand1 = (int)BitOperations.GetRegisterValue((int)instruction.Binary);
 
-            instruction.Execute = () => Emulator.PopStack(instruction.operand1);
+            instruction.Execute = () => Emulator.PopStack((uint)instruction.operand1);
         }
 
         private void DecodePush(Instruction instruction, int variant)
@@ -214,23 +220,23 @@ namespace asm.Asm
             if (variant == 0)
             {
                 instruction.Fetch = () =>
-                    instruction.operand1 = (uint)Emulator.Registers[BitOperations.GetRegisterValue((int)instruction.Binary)];
+                    instruction.operand1 = Emulator.Registers[BitOperations.GetRegisterValue((int)instruction.Binary)];
             }
             else
             {
                 instruction.Fetch = () =>
-                    instruction.operand1 = instruction.GetBits(0, 25);
+                    instruction.operand1 = (int)instruction.GetBits(0, 25);
             }
 
-            instruction.Execute = () => Emulator.PushToStack(instruction.operand1);
+            instruction.Execute = () => Emulator.PushToStack((uint)instruction.operand1);
         }
 
         private void DecodeJump(Instruction instruction)
         {
             instruction.Fetch = () =>
-                instruction.operand1 = instruction.GetBits(0, 25);
+                instruction.operand1 = (int)instruction.GetBits(0, 25);
 
-            instruction.Execute = () => Emulator.Jump(instruction.operand1);
+            instruction.Execute = () => Emulator.Jump((uint)instruction.operand1);
         }
 
         // operand 1 is address to load/store
@@ -243,16 +249,16 @@ namespace asm.Asm
             switch (variant)
             {
                 case 0:
-                    instruction.operand1 = instruction.GetBits(0, 22);
-                    instruction.operand2 = instruction.GetBits(23, 25);
+                    instruction.operand1 = (int)instruction.GetBits(0, 22);
+                    instruction.operand2 = (int)instruction.GetBits(23, 25);
                     break;
                 case 1:
-                    instruction.operand1 = BitOperations.GetRegisterValue(bits);
-                    instruction.operand2 = instruction.GetBits(3, 5);
+                    instruction.operand1 = (int)BitOperations.GetRegisterValue(bits);
+                    instruction.operand2 = (int)instruction.GetBits(3, 5);
                     break;
                 case 2:
-                    instruction.operand1 = BitOperations.GetRegisterValue(bits) + instruction.GetBits(3, 22);
-                    instruction.operand2 = instruction.GetBits(23, 25);
+                    instruction.operand1 = (int)(BitOperations.GetRegisterValue(bits) + instruction.GetBits(3, 22));
+                    instruction.operand2 = (int)instruction.GetBits(23, 25);
                     break;
             }
         };
@@ -264,7 +270,7 @@ namespace asm.Asm
 
             instruction.Execute = () =>
             {
-                Emulator.Memory.Write((ushort)instruction.operand1,instruction.operand2);
+                Emulator.Memory.Write((ushort)instruction.operand1,(uint)instruction.operand2);
             };
         }
 
@@ -280,8 +286,8 @@ namespace asm.Asm
 
         private readonly Func<Instruction, Action> _ioFetch = instruction => () =>
         {
-            instruction.operand1 = instruction.GetBits(0, 7);
-            instruction.operand2 = instruction.GetBits(8, 10);
+            instruction.operand1 = (int)instruction.GetBits(0, 7);
+            instruction.operand2 = (int)instruction.GetBits(8, 10);
         };
 
         private void DecodeOutput(Instruction instruction)
@@ -290,7 +296,7 @@ namespace asm.Asm
 
             instruction.Execute = () =>
             {
-                Emulator.Io.Write(instruction.operand1, Emulator.Registers[instruction.operand2]);
+                Emulator.Io.Write((uint)instruction.operand1, Emulator.Registers[instruction.operand2]);
             };
         }
 
@@ -299,7 +305,7 @@ namespace asm.Asm
             instruction.Fetch = _ioFetch(instruction);
             instruction.Execute = () =>
             {
-                var input = Emulator.Io.Read(instruction.operand1);
+                var input = Emulator.Io.Read((uint)instruction.operand1);
                 Emulator.Registers[instruction.operand1] = input;
             };
         }

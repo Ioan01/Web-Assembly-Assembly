@@ -11,14 +11,11 @@
 			<StandaloneCodeEditor Id="my-editor-instance-id" ConstructionOptions="EditorConstructionOptions" @ref="codeEditor" />
 		</div>
 		
-		@if (emulator.State == EmulatorState.Idle)
-		{
+	
 		    <MudButton @onclick="async ()=>await LoadProgram()" >Load</MudButton>
-		}
-        else if(emulator.State == EmulatorState.Ready)
-		{
+		
 			<MudButton @onclick="()=>emulator.Run()">Run</MudButton>
-		}
+		
 		
 		
     </MudCardContent>
@@ -40,7 +37,14 @@
 				AutomaticLayout = true,
 				Language = "plaintext",
 				LineHeight=30,
-				Value= "INP R0,2\nOUT R0,2\nCMP R0,-21"
+				Value= @"MOV R3,100
+#LOOP CMP R3,10
+BEQ #START
+BRA #END
+#START OUT R3,2
+SUB R3,1
+BRA #LOOP
+#END HLT"
 			};
 	}
 

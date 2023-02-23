@@ -15,7 +15,6 @@ namespace asm.Asm
 
             // right shift with uint to avoid adding 1's
             var mask = ((~0u) << (from + size - to)) >> (size - to);
-            Console.WriteLine(Convert.ToString(mask, 2));
 
 
             var bits = (number & mask) >> from;

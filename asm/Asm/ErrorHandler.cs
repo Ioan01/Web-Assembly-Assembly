@@ -6,7 +6,7 @@ public static class ErrorHandler
     public static void VerifyAddress(uint address)
     {
         if (address > Memory.Size)
-            throw new InvalidOperationException("Memory address given to access memory is too large");
+            throw new InvalidOperationException($"Memory address given to access memory is too large {address}");
     }
 
     public static void ValidatePush(uint stackPointer)

@@ -60,21 +60,20 @@
 
         var binary = ((Instructions.Opcodes[instruction.Alias] + variant) << 26) | _26Bits;
 
-        Console.WriteLine(instruction.Alias + instruction.Arguments.Aggregate(" : ",(s1,s2)=>s1 + ' ' +s2));
-        Console.WriteLine(BitOperations.ToBinary(binary));
+
 
         return binary;
         }
 
         private uint EncodeALU(IntermediaryInstruction instruction, ref uint variant)
         {
-            if (instruction.Arguments[1].ValueType == Type.Register)
+            if (instruction.Arguments[1].ValueType == Type.Immediate)
             {
-                variant = 1;
                 return BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
                        (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23);
             }
 
+            variant = 1;
             return  BitOperations.GetRegisterValue(instruction.Arguments[1].Value) |
                           (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 3);
         }
