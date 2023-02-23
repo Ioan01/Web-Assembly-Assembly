@@ -67,7 +67,7 @@ namespace asm.Asm
         public static readonly Dictionary<uint, string> OpcodesReverse =
             Opcodes.ToDictionary(pair => pair.Value, pair => pair.Key);
 
-
+        
 
     }
 }

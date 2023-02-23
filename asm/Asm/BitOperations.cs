@@ -44,6 +44,11 @@ namespace asm.Asm
             return str;
         }
 
+        public static uint Get26ImmediateValueFromInstruction(Instruction instruction)
+        {
+            return Get26BitImmediateValue((int)instruction.Binary);
+        }
+
         
     }
 }

@@ -28,5 +28,11 @@
 
             Execute();
         }
+
+
+        public uint GetBits(int from, int to)
+        {
+            return BitOperations.GetBits((int)Binary, from, to);
+        }
     }
 }

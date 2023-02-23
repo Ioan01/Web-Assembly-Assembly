@@ -2,12 +2,24 @@
 
 public static class ErrorHandler
 {
-    static UInt16 max_address = UInt16.MaxValue;
     
-    
-    
-    public static void VerifyAddress(UInt16 address)
+    public static void VerifyAddress(uint address)
     {
-        
+        if (address > Memory.Size)
+            throw new InvalidOperationException("Memory address given to access memory is too large");
+    }
+
+    public static void ValidatePush(uint stackPointer)
+    {
+        if (stackPointer == Memory.Size - Memory.StackSize)
+        {
+            throw new InvalidOperationException("Cannot push when stack is full");
+        }
+    }
+
+    public static void ValidatePop(uint stackPointer)
+    {
+        if (stackPointer >= Memory.Size)
+            throw new InvalidOperationException("Cannot pop when stack is empty");
     }
 }

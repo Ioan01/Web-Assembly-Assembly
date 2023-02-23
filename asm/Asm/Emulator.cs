@@ -15,17 +15,38 @@
 
 		private CodeProcessor codeProcessor;
 
+        public EmulatorState State { get; set; } = EmulatorState.Idle;
 
-		public Memory Memory { get; set; } = new Memory();
+
+
+        /// <summary>
+        /// External devices
+        /// </summary>
+
+        public Memory Memory { get; set; } = new Memory();
 
 		public IO Io { get; set; } = new IO();
 
-		public EmulatorState State { get; set; } = EmulatorState.Idle;
+
+
+		/// <summary>
+		/// Registers
+		/// </summary>
 
         public int[] Registers { get; set; } = new int[8];
 
+        public uint LinkRegister { get; set; } = 0;
 
-		
+        public uint ProgramCounter { get; set; }
+
+        public uint StackPointer { get; set; } = Memory.Size;
+
+
+        public bool Zero { get; set; }
+		public bool Carry { get; set; }
+		public bool Overflow { get; set; }
+		public bool Negative { get; set; }
+
 
 
         public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
@@ -66,5 +87,51 @@
 			await Task.Delay(1000);
 			
 		}
-	}
+
+        public void Stop()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Jump(uint address)
+        {
+            ErrorHandler.VerifyAddress(address);
+
+            LinkRegister = ProgramCounter+1;
+
+            ProgramCounter = address;
+
+
+        }
+
+        public void PushToStack(uint value)
+        {
+            ErrorHandler.ValidatePush(StackPointer);
+
+            StackPointer++;
+
+			Memory.Write(StackPointer,value);
+
+        }
+
+        public void PopStack(uint destinationRegister)
+        {
+            ErrorHandler.ValidatePop(StackPointer);
+            StackPointer--;
+
+            Registers[destinationRegister] = (int)Memory.Read(StackPointer);
+        }
+
+        public void Return()
+        {
+            ProgramCounter = LinkRegister;
+
+            LinkRegister = 0;
+
+        }
+
+        public void Branch(int get26BitImmediateValue)
+        {
+        }
+    }
 }
