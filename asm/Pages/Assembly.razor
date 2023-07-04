@@ -5,30 +5,46 @@
 <PageTitle>Assembly</PageTitle>
 
 
-<MudCard>
-	<MudCardContent>
-		<div class="d-flex">
-			<StandaloneCodeEditor Id="my-editor-instance-id" ConstructionOptions="EditorConstructionOptions" @ref="codeEditor" />
-		</div>
+<MudCard Outlined="true" Elevation="10">
+    <MudCardContent Class="d-flex">
+        <div >
+            <StandaloneCodeEditor Id="my-editor-instance-id" ConstructionOptions="EditorConstructionOptions" @ref="codeEditor" />
+            <MudButton @onclick="async ()=>await LoadProgram()" Disabled="@cantLoad">Load</MudButton>
 		
-		@if (emulator.State == EmulatorState.Idle)
-		{
-		    <MudButton @onclick="async ()=>await LoadProgram()" >Load</MudButton>
-		}
-        else if(emulator.State == EmulatorState.Ready)
-		{
-			<MudButton @onclick="()=>emulator.Run()">Run</MudButton>
-		}
+            <MudButton @onclick="async ()=>await RunEmulator()" Disabled="@cantRun">Run</MudButton>
+        </div>
+        <MudDivider Vertical="true" FlexItem="true" />
+        <MudPaper Width="300px" Square="true">
+            <MudList Clickable="true">
+				@{
+				    int index = 0;
+				}
+                @foreach (var register in emulator.Registers)
+                {
+                    var index1 = index;
+                    <MudListItem>Register @index1 : @register</MudListItem>
+                    <MudDivider/>
+                    index++;
+                }
+            </MudList>
+        </MudPaper>
 		
-		
+	
+        
+        
+
+
     </MudCardContent>
+    
 
 </MudCard>
 
 @code {
 	StandaloneCodeEditor codeEditor;
 
+	private bool cantLoad => emulator.State == EmulatorState.Running;
 
+	private bool cantRun => emulator.State != EmulatorState.Ready;
 
 
 	private List<string> elements = new List<string> { "a", "b" };
@@ -40,14 +56,31 @@
 				AutomaticLayout = true,
 				Language = "plaintext",
 				LineHeight=30,
-				Value= "INP R0,2\nOUT R0,2\nCMP R0,-21"
+				Value = @"MOV R3,100
+#LOOP CMP R3,10
+BEQ #END
+OUT R3,2
+SUB R3,1
+BRA #LOOP
+#END HLT"
 			};
 	}
 
 	private async Task LoadProgram()
 	{
-		await Task.Delay(1000);
 		emulator.LoadEmulator(await codeEditor.GetValue());
+	}
+
+	private async Task RunEmulator()
+	{
+		emulator.Reset();
+
+
+
+	    while (await emulator.RunNext())
+	    {
+			StateHasChanged();
+	    }
 	}
 
 

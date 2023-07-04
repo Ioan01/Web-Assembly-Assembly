@@ -15,20 +15,55 @@
 
 		private CodeProcessor codeProcessor;
 
+        public EmulatorState State { get; set; } = EmulatorState.Idle;
 
-		public Memory Memory { get; set; } = new Memory();
+
+
+        /// <summary>
+        /// External devices
+        /// </summary>
+
+        public Memory Memory { get; set; } = new Memory();
 
 		public IO Io { get; set; } = new IO();
 
-		public EmulatorState State { get; set; } = EmulatorState.Idle;
 
 
-		public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor)
+		/// <summary>
+		/// Registers
+		/// </summary>
+
+        public int[] Registers { get; set; } = new int[8];
+
+        public uint LinkRegister { get; set; } = 0;
+
+        public uint ProgramCounter { get; set; }
+
+        public uint StackPointer { get; set; } = Memory.Size;
+
+
+        public bool Zero { get; set; }
+		public bool Carry { get; set; }
+		public bool Overflow { get; set; }
+		public bool Negative { get; set; }
+
+
+
+        public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
 		{
 			this.instructionDecoder = instructionDecoder;
+
+			this.instructionDecoder.Emulator = this;
+
 			this.instructionEncoder = instructionEncoder;
+
+
 			this.codeProcessor = codeProcessor;
-		}
+
+
+			// seed memory stuff like that
+            seedEmulator?.Invoke();
+        }
 		
 		public void LoadEmulator(string code)
 		{
@@ -43,14 +78,125 @@
 			});
 
 
-			//State = EmulatorState.Ready;
+			State = EmulatorState.Ready;
 
 		}
 
 		public async Task Run()
+        {
+            ProgramCounter = 0;
+            Stopped = false;
+            while (!Stopped)
+            {
+
+                var instruction = Memory.Read(ProgramCounter);
+                var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
+
+                decodedInstruction.Fetch?.Invoke();
+                decodedInstruction.Execute();
+
+                await Task.Delay(Delay);
+                ProgramCounter++;
+            }
+
+
+            State = EmulatorState.Idle;
+
+        }
+
+		public void Reset()
 		{
-			await Task.Delay(1000);
-			
+			ProgramCounter = 0;
+			Stopped = false;
+
+			for (int i = 0; i < Registers.Length; i++)
+			{
+				Registers[i] = 0;
+			}
+
+			Zero = false;
+			Carry = false;
+			Overflow = false;
+			LinkRegister = 0;
+
+		StackPointer = Memory.Size;
+
+		State = EmulatorState.Running;
 		}
-	}
+
+		public async Task<bool> RunNext()
+		{
+			if (!Stopped)
+			{
+
+				var instruction = Memory.Read(ProgramCounter);
+				var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
+
+				decodedInstruction.Fetch?.Invoke();
+				decodedInstruction.Execute();
+
+				ProgramCounter++;
+
+				await Task.Delay(Delay);
+                return true;
+			}
+
+			State = EmulatorState.Ready;
+
+            return false;
+		}
+
+        public int Delay { get; set; } = 10;
+
+        public void Stop()
+        {
+            Stopped = true;
+        }
+
+        public bool Stopped { get; set; }
+
+        public void Jump(uint address)
+        {
+            ErrorHandler.VerifyAddress(address);
+
+            LinkRegister = ProgramCounter+1;
+
+            ProgramCounter = address - 1;
+
+
+        }
+
+        public void PushToStack(uint value)
+        {
+            ErrorHandler.ValidatePush(StackPointer);
+
+            StackPointer++;
+
+			Memory.Write(StackPointer,value);
+
+        }
+
+        public void PopStack(uint destinationRegister)
+        {
+            ErrorHandler.ValidatePop(StackPointer);
+            StackPointer--;
+
+            Registers[destinationRegister] = (int)Memory.Read(StackPointer);
+        }
+
+        public void Return()
+        {
+            ProgramCounter = LinkRegister;
+
+            LinkRegister = 0;
+
+        }
+
+        public void Branch(int relativeAddress)
+        {
+            ErrorHandler.VerifyAddress((uint)(ProgramCounter + relativeAddress));
+
+            ProgramCounter = (uint)(ProgramCounter + relativeAddress) -1;
+        }
+    }
 }

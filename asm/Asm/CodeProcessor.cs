@@ -75,7 +75,7 @@ namespace asm.Asm
                 }
 
             }
-            catch (Exception e)
+            catch (Exception)
 			{
 				MessageDisplay.AddError(index,"Error parsing label.");
                 throw;

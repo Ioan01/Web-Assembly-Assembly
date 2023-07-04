@@ -1,28 +1,33 @@
 ﻿namespace asm.Asm
 {
 	public class Memory
-	{
-		private uint[] words = new uint[256 * 256];
+    {
+        public const int Size = 256 * 16;
+        public const int StackSize = Size / 16;
 
-		public uint Read(UInt16 address)
+
+
+		private uint[] words = new uint[Size];
+
+		public uint Read(uint address)
 		{
 			ErrorHandler.VerifyAddress(address);
 			return words[address];
 		}
 
-		public void Write(UInt16 address, uint value)
+		public void Write(uint address, uint value)
 		{
 			ErrorHandler.VerifyAddress(address);
 			words[address] = value;
 		}
 
-		public void Write(UInt16 startingAdress,byte len, byte[] bytes)
+
+		public void Reset()
 		{
-			 
+			for (int i = 0; i < Size; i++)
+			{
+				words[i] = 0;
+			}
 		}
-		
-		
-
-
-	}
+    }
 }

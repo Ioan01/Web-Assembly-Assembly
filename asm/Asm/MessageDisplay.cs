@@ -13,7 +13,7 @@ public static class MessageDisplay
 
     public static void AddWarning(int line, string message)
     {
-        ErrorList.Add(OutputMessage(line, "Warning", message));
+        WarningList.Add(OutputMessage(line, "Warning", message));
 
     }
 

@@ -5,107 +5,75 @@
 	
 	public class InstructionEncoder
     {
-        private static readonly Dictionary<string, uint> Opcodes = new Dictionary<string, uint>
-        {
-            {"INP",0},
-            {"OUT",1},
-            {"LDR",2},
-            {"STR",5},
-            {"HLT",8},
-            {"JMS",9},
-            {"PSH",10},
-            {"POP",12},
-            {"RET",13},
-            {"CMP",14},
-            {"BRA",16},
-            {"BEQ",17},
-            {"BMI",18},
-            {"BPL",19},
-            {"BGT",20},
-            {"BLT",22},
-            {"ADD",23},
-            {"SUB",25},
-            {"MUL",27},
-            {"DIV",29},
-            {"MOD",31},
-            {"AND",33},
-            {"OR",35},
-            {"XOR",37},
-            {"RSHIFT",39},
-            {"LSHIFT",41},
-            {"MOV",43},
-        };
+        
 
 		public uint EncodeInstruction(IntermediaryInstruction instruction)
         {
             var variant = 0u;
             var _26Bits = 0u;
 
-            var arguments = instruction.Arguments;
-
             switch (instruction.Alias)
             {
-                case "INP":
-                case "OUT":
+                case Instructions.Input:
+                case Instructions.Output:
                     _26Bits = EncodeIO(instruction, ref variant);
                     break;
-                case "LDR":
-                case "STR":
+                case Instructions.LoadRegister:
+                case Instructions.StoreRegister:
                     _26Bits = EncodeLoadAndStore(instruction, ref variant);
                     break;
-                case "RET":
-                case "HLT":
+                case Instructions.ReturnFromSubroutine:
+                case Instructions.Halt:
                     break;
-                case "PSH":
+                case Instructions.PushToStack:
                     _26Bits = EncodePsh(instruction, ref variant);
                     break;
-                case "POP":
+                case Instructions.PopFromStack:
                     _26Bits = BitOperations.GetRegisterValue(instruction.Arguments[0].Value);
                     break;
-                case "CMP":
+                case Instructions.Compare:
                     _26Bits = EncodeCmp(instruction, ref variant);
                     break;
-                case "BRA":
-                case "JMS":
-                case "BEQ":
-                case "BRZ":
-                case "BMI":
-                case "BPL":
-                case "BLT":
+                case Instructions.BranchAlways:
+                case Instructions.JumpToSubroutine:
+                case Instructions.BranchIfEqual:
+                case Instructions.BranchIfZero:
+                case Instructions.BranchIfMinus:
+                case Instructions.BranchIfPlus:
+                case Instructions.BranchIfLessThan:
                     _26Bits = BitOperations.Get26BitImmediateValue(instruction.Arguments[0].Value);
                     break;
-                case "ADD":
-                case "SUB":
-                case "MUL":
-                case "DIV":
-                case "MOD":
-                case "AND":
-                case "OR":
-                case "XOR":
-                case "RSHIFT":
-                case "LSHIFT":
-                case "MOV":
+                case Instructions.Add:
+                case Instructions.Subtract:
+                case Instructions.Multiply:
+                case Instructions.Divide:
+                case Instructions.Modulo:
+                case Instructions.BitwiseAnd:
+                case Instructions.BitwiseOr:
+                case Instructions.BitwiseExclusiveOr:
+                case Instructions.RightShift:
+                case Instructions.LeftShift:
+                case Instructions.MoveToRegister:
                     _26Bits = EncodeALU(instruction, ref variant);
                     break;
             }
 
-        var binary = ((Opcodes[instruction.Alias] + variant) << 26) | _26Bits;
+        var binary = ((Instructions.Opcodes[instruction.Alias] + variant) << 26) | _26Bits;
 
-        Console.WriteLine(instruction.Alias + instruction.Arguments.Aggregate(" : ",(s1,s2)=>s1 + ' ' +s2));
-        Console.WriteLine(BitOperations.ToBinary(binary));
+
 
         return binary;
         }
 
         private uint EncodeALU(IntermediaryInstruction instruction, ref uint variant)
         {
-            if (instruction.Arguments[1].ValueType == Type.Register)
+            if (instruction.Arguments[1].ValueType == Type.Immediate)
             {
-                variant = 1;
                 return BitOperations.GetBits(instruction.Arguments[1].Value, 0, 22) |
                        (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 23);
             }
 
+            variant = 1;
             return  BitOperations.GetRegisterValue(instruction.Arguments[1].Value) |
                           (BitOperations.GetRegisterValue(instruction.Arguments[0].Value) << 3);
         }

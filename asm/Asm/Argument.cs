@@ -34,7 +34,10 @@
             else
             {
                 ValueType = Type.Immediate;
-                Value = int.Parse(argument);
+
+                if (argument.Contains("0x"))
+                    Value = Convert.ToInt32(argument,16);
+                else Value = int.Parse(argument);
             }
         }
 
