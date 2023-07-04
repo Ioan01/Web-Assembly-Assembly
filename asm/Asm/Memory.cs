@@ -21,10 +21,13 @@
 			words[address] = value;
 		}
 
-		
-		
-		
 
-
-	}
+		public void Reset()
+		{
+			for (int i = 0; i < Size; i++)
+			{
+				words[i] = 0;
+			}
+		}
+    }
 }
