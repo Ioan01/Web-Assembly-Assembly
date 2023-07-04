@@ -1,4 +1,5 @@
 using MudBlazor;
+using static MudBlazor.Colors;
 
 namespace asm.Asm
 {
@@ -13,6 +14,8 @@ namespace asm.Asm
             var variant = 0;
 
             var instruction = new Instruction(instructionBinary);
+
+
             
 
 
@@ -20,6 +23,7 @@ namespace asm.Asm
             {
                 instructionType = Instructions.OpcodesReverse[opcode];
             }
+            // instruction can have variants, whose opcodes are similar
             else
             {
                 if (Instructions.OpcodesReverse.ContainsKey(opcode - 1))
@@ -52,7 +56,7 @@ namespace asm.Asm
                     DecodeStore(instruction, variant);
                     break;
                 case Instructions.Halt:
-                    Emulator.Stop();
+                    instruction.Execute = () => Emulator.Stop();
                     break;
                 case Instructions.JumpToSubroutine:
                     DecodeJump(instruction);
@@ -91,37 +95,37 @@ namespace asm.Asm
                     instruction.Execute = _branching(() => Emulator.Carry, instruction, Emulator);
                     break;
                 case Instructions.Add:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
+	                DecodeAlu(instruction, Emulator, variant, (i, i1) => i + i1);
                     break;
                 case Instructions.Subtract:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 - i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i - i1);
                     break;
                 case Instructions.Multiply:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i1 * i);
                     break;
                 case Instructions.Divide:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 + i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i % i1);
                     break;
                 case Instructions.Modulo:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 % i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i % i1);
                     break;
                 case Instructions.BitwiseAnd:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 & i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i1 & i);
                     break;
                 case Instructions.BitwiseOr:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 | i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i1 | i);
                     break;
                 case Instructions.BitwiseExclusiveOr:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 ^ i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i1 ^ i);
                     break;
                 case Instructions.RightShift:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 >> i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i >> i1);
                     break;
                 case Instructions.LeftShift:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i1 << i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i << i1);
                     break;
                 case Instructions.MoveToRegister:
-                    _decodeAlu(instruction, Emulator, variant, _fetchAlu, (i, i1) => i)();
+                    DecodeAlu(instruction, Emulator, variant, (i, i1) => i1);
                     break;
             }
 
@@ -145,24 +149,22 @@ namespace asm.Asm
 
         };
 
-        private readonly Func<Instruction, Emulator, int,Func<Instruction, int, Emulator, Action>, Func<int, int,int>, Action> _decodeAlu =
-            (instruction, emulator,variant, fetch, execution) =>
-                () =>
-                {
-                    instruction.Fetch = fetch(instruction, variant, emulator);
+        private void DecodeAlu(Instruction instruction, Emulator emulator, int variant, Func<int, int, int> execution)
+        {
+	        instruction.Fetch = _fetchAlu(instruction, variant, emulator);
 
-                    instruction.Execute = ()=> 
-                        emulator.Registers[instruction.operand2] =
-                        execution((int)instruction.operand1, (int)instruction.operand2);
-                };
-
-        
+		        instruction.Execute = () =>
+			        emulator.Registers[instruction.operand2] =
+				        execution(emulator.Registers[instruction.operand2], instruction.operand1);
+        }
 
 
         private Func<Func<bool>,Instruction,Emulator, Action> _branching = (func,instruction,emulator) => () =>
         {
-            if (func?.Invoke() == true)
-                emulator.Branch((int)BitOperations.Get26ImmediateValueFromInstruction(instruction));
+            var relativeAddress = BitOperations.GetSigned26ImmediateValueFromInstruction(instruction);
+
+            if (func.Invoke())
+                emulator.Branch(relativeAddress);
         };
 
 

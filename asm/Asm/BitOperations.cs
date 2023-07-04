@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace asm.Asm
 {
@@ -13,11 +14,17 @@ namespace asm.Asm
             }
             var size = sizeof(int) * 8 - 1;
 
-            // right shift with uint to avoid adding 1's
-            var mask = ((~0u) << (from + size - to)) >> (size - to);
+            int mask;
+
+            if (number > 0)
+            // right shift with uint to avoid leading adding 1's
+                mask = (int)((~0u << from + size - to) >>> size - to);
+            else mask = (int)((~0u << from + size - to) >>> size - to);
 
 
-            var bits = (number & mask) >> from;
+            var bits = (number & mask) >>> from;
+
+
 
             return (uint)bits;
         }
@@ -46,6 +53,14 @@ namespace asm.Asm
         public static uint Get26ImmediateValueFromInstruction(Instruction instruction)
         {
             return Get26BitImmediateValue((int)instruction.Binary);
+        }
+
+        public static int GetSigned26ImmediateValueFromInstruction(Instruction instruction)
+        {
+            var unsignedValue = (int)Get26ImmediateValueFromInstruction(instruction);
+            if ((unsignedValue & (1<<25)) != 0) 
+                return (int)(0xFC000000 |unsignedValue);
+            return unsignedValue;
         }
 
         

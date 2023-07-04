@@ -85,6 +85,7 @@
 		public async Task Run()
         {
             ProgramCounter = 0;
+            Stopped = false;
             while (!Stopped)
             {
 
@@ -103,7 +104,49 @@
 
         }
 
-        public int Delay { get; set; } = 1000;
+		public void Reset()
+		{
+			ProgramCounter = 0;
+			Stopped = false;
+
+			for (int i = 0; i < Registers.Length; i++)
+			{
+				Registers[i] = 0;
+			}
+
+			Zero = false;
+			Carry = false;
+			Overflow = false;
+			LinkRegister = 0;
+
+		StackPointer = Memory.Size;
+
+		State = EmulatorState.Running;
+		}
+
+		public async Task<bool> RunNext()
+		{
+			if (!Stopped)
+			{
+
+				var instruction = Memory.Read(ProgramCounter);
+				var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
+
+				decodedInstruction.Fetch?.Invoke();
+				decodedInstruction.Execute();
+
+				ProgramCounter++;
+
+				await Task.Delay(Delay);
+                return true;
+			}
+
+			State = EmulatorState.Ready;
+
+            return false;
+		}
+
+        public int Delay { get; set; } = 10;
 
         public void Stop()
         {
@@ -118,7 +161,7 @@
 
             LinkRegister = ProgramCounter+1;
 
-            ProgramCounter = address;
+            ProgramCounter = address - 1;
 
 
         }
@@ -152,6 +195,8 @@
         public void Branch(int relativeAddress)
         {
             ErrorHandler.VerifyAddress((uint)(ProgramCounter + relativeAddress));
+
+            ProgramCounter = (uint)(ProgramCounter + relativeAddress) -1;
         }
     }
 }

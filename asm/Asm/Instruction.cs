@@ -34,7 +34,6 @@ namespace asm.Asm
 
         public uint GetBits(int from, int to)
         {
-            Console.WriteLine(BitOperations.ToBinary(Binary));
             return BitOperations.GetBits((int)Binary, from, to);
         }
     }
