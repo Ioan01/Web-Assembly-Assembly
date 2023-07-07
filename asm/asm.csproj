@@ -17,4 +17,8 @@
       <Folder Include="Asm\ErrorHandler" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Include="wwwroot\scripts\monacoLanguage.js" />
+    </ItemGroup>
+
 </Project>

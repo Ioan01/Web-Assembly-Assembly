@@ -47,9 +47,14 @@
 		public bool Overflow { get; set; }
 		public bool Negative { get; set; }
 
+		public bool Stopped { get; set; }
+
+		public int Delay { get; set; } = 1;
 
 
-        public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
+
+
+		public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
 		{
 			this.instructionDecoder = instructionDecoder;
 
@@ -61,7 +66,7 @@
 			this.codeProcessor = codeProcessor;
 
 
-			// seed memory stuff like that
+			
             seedEmulator?.Invoke();
         }
 		
@@ -70,6 +75,8 @@
 			var instructions = codeProcessor.ProcessInstructions(code);
 			
 			ushort index = 0;
+
+			Memory.Reset();
 
 			instructions.ForEach(instruction =>
 			{
@@ -119,9 +126,10 @@
 			Overflow = false;
 			LinkRegister = 0;
 
-		StackPointer = Memory.Size;
+			StackPointer = Memory.Size;
 
-		State = EmulatorState.Running;
+			State = EmulatorState.Running;
+
 		}
 
 		public async Task<bool> RunNext()
@@ -146,14 +154,15 @@
             return false;
 		}
 
-        public int Delay { get; set; } = 10;
 
         public void Stop()
         {
             Stopped = true;
+
+            State = EmulatorState.Ready;
         }
 
-        public bool Stopped { get; set; }
+        
 
         public void Jump(uint address)
         {
@@ -161,7 +170,7 @@
 
             LinkRegister = ProgramCounter+1;
 
-            ProgramCounter = address - 1;
+            ProgramCounter = address-1;
 
 
         }

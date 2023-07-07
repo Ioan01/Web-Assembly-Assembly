@@ -21,7 +21,6 @@ namespace asm.Asm
                 mask = (int)((~0u << from + size - to) >>> size - to);
             else mask = (int)((~0u << from + size - to) >>> size - to);
 
-
             var bits = (number & mask) >>> from;
 
 
@@ -49,7 +48,6 @@ namespace asm.Asm
 
             return str;
         }
-
         public static uint Get26ImmediateValueFromInstruction(Instruction instruction)
         {
             return Get26BitImmediateValue((int)instruction.Binary);
@@ -59,7 +57,7 @@ namespace asm.Asm
         {
             var unsignedValue = (int)Get26ImmediateValueFromInstruction(instruction);
             if ((unsignedValue & (1<<25)) != 0) 
-                return (int)(0xFC000000 |unsignedValue);
+                return (int)(0xFC000000 | unsignedValue);
             return unsignedValue;
         }
 

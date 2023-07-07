@@ -91,13 +91,15 @@ namespace asm.Asm
 				return null;
 			}
 			List<string> lines;
-			lines = code.Contains('\n') ? code.Split('\n').ToList() : new List<string>(new []{code});
-			
-			ValidateInstructions(lines);
+
+
+            lines = code.Contains('\n') ? code.Split('\n').ToList() : new List<string>(new []{code});
+            lines = lines.Where(line => !string.IsNullOrEmpty(line) && !string.IsNullOrWhiteSpace(line)).ToList();
+            ValidateInstructions(lines);
 			
             ReplaceLabels(lines);
 
-            lines = lines.Where(line => !string.IsNullOrEmpty(line)).ToList();
+            
 
 			return new List<IntermediaryInstruction>(lines.Select(line =>
 			{
