@@ -116,6 +116,8 @@
 			ProgramCounter = 0;
 			Stopped = false;
 
+            LastInstruction = "NOP";
+
 			for (int i = 0; i < Registers.Length; i++)
 			{
 				Registers[i] = 0;
@@ -143,6 +145,8 @@
 				decodedInstruction.Fetch?.Invoke();
 				decodedInstruction.Execute();
 
+                LastInstruction = decodedInstruction.Type;
+
 				ProgramCounter++;
 
 				await Task.Delay(Delay);
@@ -160,6 +164,8 @@
             Stopped = true;
 
             State = EmulatorState.Ready;
+
+            LastInstruction = "HLT";
         }
 
         
@@ -207,5 +213,7 @@
 
             ProgramCounter = (uint)(ProgramCounter + relativeAddress) -1;
         }
+
+        public string LastInstruction { get; set; } = "NOP";
     }
 }

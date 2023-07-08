@@ -17,7 +17,18 @@
             <MudButton @onclick="async () => await RunEmulator()" Disabled="@cantRun">Run</MudButton>
 
             <MudButton @onclick="StopEmulator" Disabled="@cantStop">Stop</MudButton>
-
+            
+            @if (!_paused)
+            {
+                <MudButton @onclick="Pause" Disabled="@cantPause" StartIcon="@Icons.Material.Filled.Pause"></MudButton>
+            }
+            else
+            {
+                <MudButton @onclick="Resume" StartIcon="@Icons.Material.Filled.PlayArrow"></MudButton>
+            }
+            
+            <MudButton @onclick="RunNext" Disabled="@cantStep" StartIcon="@Icons.Material.Filled.SkipNext"></MudButton>
+            
             <MudPaper Outlined="true" Class="d-inline-flex mt-3">
                 <MudButton @onclick="DecreaseSpeed" Disabled="speedIndex == 0">-</MudButton>
                 <a class="mt-auto mb-auto">@(speedIndex + 1)</a>
@@ -27,32 +38,36 @@
 
         </div>
         <div class="vr mx-2"></div>
-        <MudPaper  Outlined="true" Class="align-self-start"  >
-            <MudList  >
+        <MudPaper Outlined="true" Class="align-self-start">
+            
+            <MudChip>@emulator.LastInstruction</MudChip>
+
+
+            <MudList >
                 <MudListSubheader>
                     Registers
                 </MudListSubheader>
                 <MudDivider/>
-                
+
                 <div class="d-inline-flex w-100">
                     <MudChip class="ml-5">PC</MudChip>
                     <MudChip class="ml-auto w-50">@emulator.ProgramCounter</MudChip>
                 </div>
-                
+
                 <div class="d-inline-flex w-100">
                     <MudChip class="ml-5">LR</MudChip>
                     <MudChip class="ml-auto w-50">@emulator.LinkRegister</MudChip>
                 </div>
-                
+
                 <div class="d-inline-flex w-100">
                     <MudChip class="ml-5">SP</MudChip>
                     <MudChip class="ml-auto w-50">@emulator.StackPointer</MudChip>
                 </div>
 
-                <MudDivider />
+                <MudDivider/>
                 <MudListItem Text="GP" InitiallyExpanded="true">
                     <NestedList >
-                        <MudDivider />
+                        <MudDivider/>
                         @{
                             int index = 0;
                         }
@@ -71,7 +86,7 @@
                         }
                     </NestedList>
                 </MudListItem>
-                <MudDivider />
+                <MudDivider/>
                 <MudListItem Text="Flags">
                     <NestedList>
                         <div class="d-inline-flex w-100">
@@ -79,30 +94,30 @@
                             <MudChip Class="ml-auto">@emulator.Zero.GetHashCode()</MudChip>
                         </div>
                         <MudDivider/>
-                        
+
                         <div class="d-inline-flex w-100">
                             <MudListItem>Negative</MudListItem>
-                            
+
                             <MudChip>@emulator.Negative.GetHashCode()</MudChip>
                         </div>
-                        <MudDivider />
-                        
+                        <MudDivider/>
+
                         <div class="d-inline-flex w-100">
                             <MudListItem>Overflow</MudListItem>
                             <MudChip>@emulator.Overflow.GetHashCode()</MudChip>
                         </div>
-                        <MudDivider />
-                        
+                        <MudDivider/>
+
                         <div class="d-inline-flex w-100">
                             <MudListItem>Carry</MudListItem>
                             <MudChip>@emulator.Carry.GetHashCode()</MudChip>
                         </div>
-                        <MudDivider />
+                        <MudDivider/>
 
                     </NestedList>
                 </MudListItem>
-                
-                
+
+
             </MudList>
         </MudPaper>
 		
@@ -127,8 +142,13 @@
 
     StandaloneCodeEditor consoleOutput;
         
+    // rerender ui every 2 instructions
+    private const int reRenderInterval = 2;
     // rerender console every 4 instructions
-        private const int consoleReRenderInterval = 4;
+    private const int consoleReRenderInterval = 4;
+
+    private bool _paused = false;
+
 
 	private bool cantLoad => emulator.State == EmulatorState.Running;
 
@@ -136,7 +156,12 @@
 
     private bool cantStop => emulator.State != EmulatorState.Running;
 
-    private int[] speeds = new[] { 100, 50, 1 };
+    private bool cantPause => cantStop;
+
+    private bool cantStep { get; set; } = true;
+
+
+    private int[] speeds = { 100, 50, 1 };
     private int speedIndex = 0;
 
 
@@ -151,7 +176,6 @@
 
 
 
-    private List<string> elements = new List<string> { "a", "b" };
 
 	private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
 	{
@@ -188,21 +212,23 @@ BRA #LOOP
 		emulator.LoadEmulator(await codeEditor.GetValue());
 	}
 
-	private async Task RunEmulator()
+	private async Task RunEmulator(bool reset = true)
 	{
 
 	    var iteration = 0;
-		emulator.Reset();
-
-	    await consoleOutput.SetValue("");
-        
-
-
-	    while (await emulator.RunNext())
+	    if (reset)
 	    {
-            
-			StateHasChanged();
+	        emulator.Reset();
+	        await consoleOutput.SetValue("");
+	    }
 
+	    while (await emulator.RunNext() && !_paused)
+	    {
+
+	        if (iteration % reRenderInterval == 0)
+	        {
+	            StateHasChanged();
+	        }
 	        if (iteration % consoleReRenderInterval == 0)
 	        {
 	            await UpdateConsole();
@@ -211,6 +237,15 @@ BRA #LOOP
 	        iteration++;
 	    }
 	}
+
+    private async Task RunNext()
+    {
+        cantStep = true;
+        await emulator.RunNext();
+        StateHasChanged();
+        await UpdateConsole();
+        cantStep = false;
+    }
 
     private async Task UpdateConsole()
     {
@@ -225,6 +260,7 @@ BRA #LOOP
     private void StopEmulator()
     {
         emulator.Stop();
+        _paused = false;
     }
 
     private void IncreaseSpeed()
@@ -237,6 +273,19 @@ BRA #LOOP
     {
         speedIndex--;
         emulator.Delay = speeds[speedIndex];
+    }
+
+    private void Pause()
+    {
+        _paused = true;
+        cantStep = false;
+    }
+
+    private async Task Resume()
+    {
+        _paused = false;
+        cantStep = true;
+        await RunEmulator(false);
     }
 
 }
