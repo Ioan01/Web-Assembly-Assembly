@@ -1,219 +1,201 @@
-﻿namespace asm.Asm
+﻿namespace asm.Asm;
+
+public enum EmulatorState
 {
-	public enum EmulatorState
-	{
-		Idle,
-		Ready,
-		Loading,
-		Running,
-	}
-	public class Emulator
-	{
-		private InstructionDecoder instructionDecoder;
+    Idle,
+    Ready,
+    Loading,
+    Running
+}
 
-		private InstructionEncoder instructionEncoder;
+public class Emulator
+{
+    private readonly CodeProcessor codeProcessor;
+    private readonly InstructionDecoder instructionDecoder;
 
-		private CodeProcessor codeProcessor;
-
-        public EmulatorState State { get; set; } = EmulatorState.Idle;
+    private readonly InstructionEncoder instructionEncoder;
 
 
+    public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder,
+        CodeProcessor codeProcessor, Action? seedEmulator = null)
+    {
+        this.instructionDecoder = instructionDecoder;
 
-        /// <summary>
-        /// External devices
-        /// </summary>
+        this.instructionDecoder.Emulator = this;
 
-        public Memory Memory { get; set; } = new Memory();
-
-		public IO Io { get; set; } = new IO();
-
-
-
-		/// <summary>
-		/// Registers
-		/// </summary>
-
-        public int[] Registers { get; set; } = new int[8];
-
-        public uint LinkRegister { get; set; } = 0;
-
-        public uint ProgramCounter { get; set; }
-
-        public uint StackPointer { get; set; } = Memory.Size;
+        this.instructionEncoder = instructionEncoder;
 
 
-        public bool Zero { get; set; }
-		public bool Carry { get; set; }
-		public bool Overflow { get; set; }
-		public bool Negative { get; set; }
-
-		public bool Stopped { get; set; }
-
-		public int Delay { get; set; } = 1;
+        this.codeProcessor = codeProcessor;
 
 
+        seedEmulator?.Invoke();
+    }
+
+    public EmulatorState State { get; set; } = EmulatorState.Idle;
 
 
-		public Emulator(InstructionDecoder instructionDecoder, InstructionEncoder instructionEncoder, CodeProcessor codeProcessor, Action? seedEmulator = null)
-		{
-			this.instructionDecoder = instructionDecoder;
+    /// <summary>
+    ///     External devices
+    /// </summary>
 
-			this.instructionDecoder.Emulator = this;
+    public Memory Memory { get; set; } = new();
 
-			this.instructionEncoder = instructionEncoder;
-
-
-			this.codeProcessor = codeProcessor;
+    public IO Io { get; set; } = new();
 
 
-			
-            seedEmulator?.Invoke();
-        }
-		
-		public void LoadEmulator(string code)
-		{
-			var instructions = codeProcessor.ProcessInstructions(code);
-			
-			ushort index = 0;
+    /// <summary>
+    ///     Registers
+    /// </summary>
 
-			Memory.Reset();
+    public int[] Registers { get; set; } = new int[8];
 
-			instructions.ForEach(instruction =>
-			{
-				var instructionBinary = instructionEncoder.EncodeInstruction(instruction);
-				Memory.Write(index++,instructionBinary);
-			});
+    public uint LinkRegister { get; set; }
+
+    public uint ProgramCounter { get; set; }
+
+    public uint StackPointer { get; set; } = Memory.Size;
 
 
-			State = EmulatorState.Ready;
+    public bool Zero { get; set; }
+    public bool Carry { get; set; }
+    public bool Overflow { get; set; }
+    public bool Negative { get; set; }
 
-		}
+    public bool Stopped { get; set; }
 
-		public async Task Run()
+    public int Delay { get; set; } = 1;
+
+    public string LastInstruction { get; set; } = "NOP";
+
+    public void LoadEmulator(string code)
+    {
+        var instructions = codeProcessor.ProcessInstructions(code);
+
+        ushort index = 0;
+
+        Memory.Reset();
+
+        instructions.ForEach(instruction =>
         {
-            ProgramCounter = 0;
-            Stopped = false;
-            while (!Stopped)
-            {
-
-                var instruction = Memory.Read(ProgramCounter);
-                var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
-
-                decodedInstruction.Fetch?.Invoke();
-                decodedInstruction.Execute();
-
-                await Task.Delay(Delay);
-                ProgramCounter++;
-            }
+            var instructionBinary = instructionEncoder.EncodeInstruction(instruction);
+            Memory.Write(index++, instructionBinary);
+        });
 
 
-            State = EmulatorState.Idle;
+        State = EmulatorState.Ready;
+    }
 
-        }
-
-		public void Reset()
-		{
-			ProgramCounter = 0;
-			Stopped = false;
-
-            LastInstruction = "NOP";
-
-			for (int i = 0; i < Registers.Length; i++)
-			{
-				Registers[i] = 0;
-			}
-
-			Zero = false;
-			Carry = false;
-			Overflow = false;
-			LinkRegister = 0;
-
-			StackPointer = Memory.Size;
-
-			State = EmulatorState.Running;
-
-		}
-
-		public async Task<bool> RunNext()
-		{
-			if (!Stopped)
-			{
-
-				var instruction = Memory.Read(ProgramCounter);
-				var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
-
-				decodedInstruction.Fetch?.Invoke();
-				decodedInstruction.Execute();
-
-                LastInstruction = decodedInstruction.Type;
-
-				ProgramCounter++;
-
-				await Task.Delay(Delay);
-                return true;
-			}
-
-			State = EmulatorState.Ready;
-
-            return false;
-		}
-
-
-        public void Stop()
+    public async Task Run()
+    {
+        ProgramCounter = 0;
+        Stopped = false;
+        while (!Stopped)
         {
-            Stopped = true;
+            var instruction = Memory.Read(ProgramCounter);
+            var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
 
-            State = EmulatorState.Ready;
+            decodedInstruction.Fetch?.Invoke();
+            decodedInstruction.Execute();
 
-            LastInstruction = "HLT";
+            await Task.Delay(Delay);
+            ProgramCounter++;
         }
 
-        
 
-        public void Jump(uint address)
+        State = EmulatorState.Idle;
+    }
+
+    public void Reset()
+    {
+        ProgramCounter = 0;
+        Stopped = false;
+
+        LastInstruction = "NOP";
+
+        for (var i = 0; i < Registers.Length; i++) Registers[i] = 0;
+
+        Zero = false;
+        Carry = false;
+        Overflow = false;
+        LinkRegister = 0;
+
+        StackPointer = Memory.Size;
+
+        State = EmulatorState.Running;
+    }
+
+    public async Task<bool> RunNext()
+    {
+        if (!Stopped)
         {
-            ErrorHandler.VerifyAddress(address);
+            var instruction = Memory.Read(ProgramCounter);
+            var decodedInstruction = instructionDecoder.DecodeInstruction(instruction);
 
-            LinkRegister = ProgramCounter+1;
+            decodedInstruction.Fetch?.Invoke();
+            decodedInstruction.Execute();
 
-            ProgramCounter = address-1;
+            LastInstruction = decodedInstruction.Type;
 
+            ProgramCounter++;
 
+            await Task.Delay(Delay);
+            return true;
         }
 
-        public void PushToStack(uint value)
-        {
-            ErrorHandler.ValidatePush(StackPointer);
+        State = EmulatorState.Ready;
 
-            StackPointer++;
+        return false;
+    }
 
-			Memory.Write(StackPointer,value);
 
-        }
+    public void Stop()
+    {
+        Stopped = true;
 
-        public void PopStack(uint destinationRegister)
-        {
-            ErrorHandler.ValidatePop(StackPointer);
-            StackPointer--;
+        State = EmulatorState.Ready;
 
-            Registers[destinationRegister] = (int)Memory.Read(StackPointer);
-        }
+        LastInstruction = "HLT";
+    }
 
-        public void Return()
-        {
-            ProgramCounter = LinkRegister;
 
-            LinkRegister = 0;
+    public void Jump(uint address)
+    {
+        ErrorHandler.VerifyAddress(address);
 
-        }
+        LinkRegister = ProgramCounter + 1;
 
-        public void Branch(int relativeAddress)
-        {
-            ErrorHandler.VerifyAddress((uint)(ProgramCounter + relativeAddress));
+        ProgramCounter = address - 1;
+    }
 
-            ProgramCounter = (uint)(ProgramCounter + relativeAddress) -1;
-        }
+    public void PushToStack(uint value)
+    {
+        ErrorHandler.ValidatePush(StackPointer);
 
-        public string LastInstruction { get; set; } = "NOP";
+        StackPointer++;
+
+        Memory.Write(StackPointer, value);
+    }
+
+    public void PopStack(uint destinationRegister)
+    {
+        ErrorHandler.ValidatePop(StackPointer);
+        StackPointer--;
+
+        Registers[destinationRegister] = (int)Memory.Read(StackPointer);
+    }
+
+    public void Return()
+    {
+        ProgramCounter = LinkRegister;
+
+        LinkRegister = 0;
+    }
+
+    public void Branch(int relativeAddress)
+    {
+        ErrorHandler.VerifyAddress((uint)(ProgramCounter + relativeAddress));
+
+        ProgramCounter = (uint)(ProgramCounter + relativeAddress) - 1;
     }
 }

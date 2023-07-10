@@ -2,7 +2,6 @@
 
 public static class ErrorHandler
 {
-    
     public static void VerifyAddress(uint address)
     {
         if (address > Memory.Size)
@@ -12,9 +11,7 @@ public static class ErrorHandler
     public static void ValidatePush(uint stackPointer)
     {
         if (stackPointer == Memory.Size - Memory.StackSize)
-        {
             throw new InvalidOperationException("Cannot push when stack is full");
-        }
     }
 
     public static void ValidatePop(uint stackPointer)
