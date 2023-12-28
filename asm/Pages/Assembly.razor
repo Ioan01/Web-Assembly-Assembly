@@ -1,31 +1,124 @@
 ﻿@page "/assembly"
 @using BlazorMonaco.Editor;
-@using asm.Asm;
+@using asm.Asm
+@using global::Shared.Asm
 @inject Emulator emulator
+@inject IJSRuntime JSRuntime ;
+
+
 <PageTitle>Assembly</PageTitle>
 
 
 <MudCard Outlined="true" Elevation="10">
     <MudCardContent Class="d-flex">
         <div >
-            <StandaloneCodeEditor Id="my-editor-instance-id" ConstructionOptions="EditorConstructionOptions" @ref="codeEditor" />
-            <MudButton @onclick="async ()=>await LoadProgram()" Disabled="@cantLoad">Load</MudButton>
-		
-            <MudButton @onclick="async ()=>await RunEmulator()" Disabled="@cantRun">Run</MudButton>
+            <StandaloneCodeEditor Id="my-editor-instance-id" ConstructionOptions="EditorConstructionOptions" @ref="codeEditor"/>
+            <MudButton @onclick="async () => await LoadProgram()" Disabled="@cantLoad">Load</MudButton>
+
+            <MudButton @onclick="async () => await RunEmulator()" Disabled="@cantRun">Run</MudButton>
+
+            <MudButton @onclick="StopEmulator" Disabled="@cantStop">Stop</MudButton>
+            
+            @if (!_paused)
+            {
+                <MudButton @onclick="Pause" Disabled="@cantPause" StartIcon="@Icons.Material.Filled.Pause"></MudButton>
+            }
+            else
+            {
+                <MudButton @onclick="Resume" StartIcon="@Icons.Material.Filled.PlayArrow"></MudButton>
+            }
+            
+            <MudButton @onclick="RunNext" Disabled="@cantStep" StartIcon="@Icons.Material.Filled.SkipNext"></MudButton>
+            
+            <MudPaper Outlined="true" Class="d-inline-flex mt-3">
+                <MudButton @onclick="DecreaseSpeed" Disabled="speedIndex == 0">-</MudButton>
+                <a class="mt-auto mb-auto">@(speedIndex + 1)</a>
+                <MudButton @onclick="IncreaseSpeed" Disabled="speedIndex == speeds.Length - 1">+</MudButton>
+            </MudPaper>
+
+
         </div>
-        <MudDivider Vertical="true" FlexItem="true" />
-        <MudPaper Width="300px" Square="true">
-            <MudList Clickable="true">
-				@{
-				    int index = 0;
-				}
-                @foreach (var register in emulator.Registers)
-                {
-                    var index1 = index;
-                    <MudListItem>Register @index1 : @register</MudListItem>
-                    <MudDivider/>
-                    index++;
-                }
+        <div class="vr mx-2"></div>
+        <MudPaper Outlined="true" Class="align-self-start">
+            
+            <MudChip>@emulator.LastInstruction</MudChip>
+
+
+            <MudList >
+                <MudListSubheader>
+                    Registers
+                </MudListSubheader>
+                <MudDivider/>
+
+                <div class="d-inline-flex w-100">
+                    <MudChip class="ml-5">PC</MudChip>
+                    <MudChip class="ml-auto w-50">@emulator.ProgramCounter</MudChip>
+                </div>
+
+                <div class="d-inline-flex w-100">
+                    <MudChip class="ml-5">LR</MudChip>
+                    <MudChip class="ml-auto w-50">@emulator.LinkRegister</MudChip>
+                </div>
+
+                <div class="d-inline-flex w-100">
+                    <MudChip class="ml-5">SP</MudChip>
+                    <MudChip class="ml-auto w-50">@emulator.StackPointer</MudChip>
+                </div>
+
+                <MudDivider/>
+                <MudListItem Text="GP" InitiallyExpanded="true">
+                    <NestedList >
+                        <MudDivider/>
+                        @{
+                            int index = 0;
+                        }
+
+                        @foreach (var register in emulator.Registers)
+                        {
+                            var index1 = index;
+                            <div class="d-inline-flex w-100">
+                                <MudChip class="ml-5">R@(index1)</MudChip>
+                                <MudChip class="ml-auto w-50">@register</MudChip>
+                            </div>
+
+                            <MudDivider/>
+
+                            index++;
+                        }
+                    </NestedList>
+                </MudListItem>
+                <MudDivider/>
+                <MudListItem Text="Flags">
+                    <NestedList>
+                        <div class="d-inline-flex w-100">
+                            <MudListItem class="w-50">Zero</MudListItem>
+                            <MudChip Class="ml-auto">@emulator.Zero.GetHashCode()</MudChip>
+                        </div>
+                        <MudDivider/>
+
+                        <div class="d-inline-flex w-100">
+                            <MudListItem>Negative</MudListItem>
+
+                            <MudChip>@emulator.Negative.GetHashCode()</MudChip>
+                        </div>
+                        <MudDivider/>
+
+                        <div class="d-inline-flex w-100">
+                            <MudListItem>Overflow</MudListItem>
+                            <MudChip>@emulator.Overflow.GetHashCode()</MudChip>
+                        </div>
+                        <MudDivider/>
+
+                        <div class="d-inline-flex w-100">
+                            <MudListItem>Carry</MudListItem>
+                            <MudChip>@emulator.Carry.GetHashCode()</MudChip>
+                        </div>
+                        <MudDivider/>
+
+                    </NestedList>
+                </MudListItem>
+
+
             </MudList>
         </MudPaper>
 		
@@ -37,53 +130,163 @@
     </MudCardContent>
     
 
+    
+
 </MudCard>
+
+<StandaloneCodeEditor Id="consoleOutput" ConstructionOptions="OutputConstructionOptions" @ref="consoleOutput"
+                      CssClass="w-100"
+/>
 
 @code {
 	StandaloneCodeEditor codeEditor;
+
+    StandaloneCodeEditor consoleOutput;
+        
+    // rerender ui every 2 instructions
+    private const int reRenderInterval = 2;
+    // rerender console every 4 instructions
+    private const int consoleReRenderInterval = 4;
+
+    private bool _paused = false;
+
 
 	private bool cantLoad => emulator.State == EmulatorState.Running;
 
 	private bool cantRun => emulator.State != EmulatorState.Ready;
 
+    private bool cantStop => emulator.State != EmulatorState.Running;
 
-	private List<string> elements = new List<string> { "a", "b" };
+    private bool cantPause => cantStop;
+
+    private bool cantStep { get; set; } = true;
+
+
+    private int[] speeds = { 100, 50, 1 };
+    private int speedIndex = 0;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./scripts/monacoLanguage.js");
+        await jsModule.InvokeVoidAsync("initializeLanguage");
+        await Global.SetModelLanguage(await codeEditor.GetModel(), "mySpecialLanguage");
+        await Global.SetTheme("myCoolTheme");
+
+    }
+
+
+
 
 	private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
 	{
-		return new StandaloneEditorConstructionOptions
+	    return new StandaloneEditorConstructionOptions
 			{
 				AutomaticLayout = true,
-				Language = "plaintext",
 				LineHeight=30,
-				Value = @"MOV R3,100
-#LOOP CMP R3,10
-BEQ #END
-OUT R3,2
-SUB R3,1
-BRA #LOOP
-#END HLT"
+			    Value = @"MOV R3,100 
+#LOOP CMP R3,10 
+BEQ #END 
+OUT R3,2 
+SUB R3,1 
+BRA #LOOP 
+#END HLT",
+			    Theme = "vs-dark"
 			};
 	}
+
+    private StandaloneEditorConstructionOptions OutputConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions()
+        {
+            AutomaticLayout = true,
+            Language = "plaintext",
+            LineHeight = 15,
+
+            ReadOnly = true,
+            Theme = "vs-dark"
+        };
+    }
 
 	private async Task LoadProgram()
 	{
 		emulator.LoadEmulator(await codeEditor.GetValue());
 	}
 
-	private async Task RunEmulator()
+	private async Task RunEmulator(bool reset = true)
 	{
-		emulator.Reset();
 
-
-
-	    while (await emulator.RunNext())
+	    var iteration = 0;
+	    if (reset)
 	    {
-			StateHasChanged();
+	        emulator.Reset();
+	        await consoleOutput.SetValue("");
+	    }
+
+	    while (await emulator.RunNext() && !_paused)
+	    {
+
+	        if (iteration % reRenderInterval == 0)
+	        {
+	            StateHasChanged();
+	        }
+	        if (iteration % consoleReRenderInterval == 0)
+	        {
+	            await UpdateConsole();
+	        }
+
+	        iteration++;
 	    }
 	}
 
+    private async Task RunNext()
+    {
+        cantStep = true;
+        await emulator.RunNext();
+        StateHasChanged();
+        await UpdateConsole();
+        cantStep = false;
+    }
+
+    private async Task UpdateConsole()
+    {
+        var str = emulator.Io.GetBuffer();
+
+        if (str != null)
+            await consoleOutput.SetValue(await consoleOutput.GetValue() + str);
+
+    }
 
 
-	
+    private void StopEmulator()
+    {
+        emulator.Stop();
+        _paused = false;
+    }
+
+    private void IncreaseSpeed()
+    {
+        speedIndex++;
+        emulator.Delay = speeds[speedIndex];
+    }
+
+    private void DecreaseSpeed()
+    {
+        speedIndex--;
+        emulator.Delay = speeds[speedIndex];
+    }
+
+    private void Pause()
+    {
+        _paused = true;
+        cantStep = false;
+    }
+
+    private async Task Resume()
+    {
+        _paused = false;
+        cantStep = true;
+        await RunEmulator(false);
+    }
+
 }
