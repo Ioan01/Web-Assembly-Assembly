@@ -1,8 +1,8 @@
 # asm
 # Little Man Computer-like Emulator
 ### Inspired by  [Peter Higginson's Online Emulator](https://peterhigginson.co.uk/RISC/)
-### Follow-up with Blazor Frontend of [MediumMan Computer Emulator](https://github.com/Ioan01/MediumManComputerEmulator)
-##
+### Follow-up with Blazor WASM Frontend of [MediumMan Computer Emulator](https://github.com/Ioan01/MediumManComputerEmulator)
+### MediumMan Computer Emulator only features 16-bit operations + registers, and 29 instructions and no frontend
 ##
 ## Specifications:
 - 32-bit Operation Size (6 bit opcode and 26 bit arguments )
