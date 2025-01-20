@@ -1,4 +1,4 @@
-# asm
+# WASM-ASM
 # Little Man Computer-like Emulator
 ### Inspired by  [Peter Higginson's Online Emulator](https://peterhigginson.co.uk/RISC/)
 ### Follow-up with Blazor WASM Frontend of [MediumMan Computer Emulator](https://github.com/Ioan01/MediumManComputerEmulator)
