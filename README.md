@@ -33,7 +33,7 @@
     Seeing as the first argument is register 0, the first bit from the argument bits will be 0
     Since the second argument contains an immediate value, the next bit will be 1 to specify that an 8-bit immediate value is used. Therefore, the last 8 bits will represent our immedaite value.
     Hence, we have 000 011 0000000000 (opcode) | 000 000 0 000000000 (register selector) | 000 000 0 1(bit that shows that the following 8 bits are an immediate value)01111111(8-bit immediate value)
-- Then, the 16-bit number is stored in the virtual memory at increasing addresses.
+- Then, the 32-bit number is stored in the virtual memory at increasing addresses.
 - Then, we start the emulator, which will 
     - Read the the 32-bit word at memory[ProgramCounter]
     - Increment Program Counter
